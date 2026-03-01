@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LINEこうかん</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --green: #06C755;
+    --green-dark: #04A244;
+    --green-light: #E8FFF0;
+    --bg: #F0FAF3;
+    --text: #1A1A1A;
+    --gray: #5A6B5D;
+    --red: #FF3B30;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overscroll-behavior: none;
+  }
+
+  .app {
+    display: flex; flex-direction: column;
+    min-height: 100svh; max-width: 480px; margin: 0 auto;
+  }
+
+  .header {
+    background: var(--green); padding: 22px 20px 18px; text-align: center; flex-shrink: 0;
+  }
+  .header h1 { color: white; font-size: 28px; font-weight: 900; }
+  .header p  { color: rgba(255,255,255,0.9); font-size: 16px; margin-top: 5px; }
+
+  .content {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 28px 20px 48px; display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* ===== メインボタン ===== */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    width: 100%; padding: 26px 16px; border: none; border-radius: 22px;
+    font-family: 'Zen Maru Gothic', sans-serif; font-size: 25px; font-weight: 900;
+    cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; line-height: 1.3;
+  }
+  .btn-icon { font-size: 34px; flex-shrink: 0; }
+  .btn-green { background: var(--green); color: white; box-shadow: 0 8px 0 var(--green-dark); }
+  .btn-green:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--green-dark); }
+  .btn-blue  { background: #3A7BD5; color: white; box-shadow: 0 8px 0 #1A4FA5; }
+  .btn-blue:active  { transform: translateY(6px); box-shadow: 0 2px 0 #1A4FA5; }
+
+  /* ===== QR表示オーバーレイ ===== */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; padding: 24px;
+    background: rgba(0,0,0,0.88);
+    animation: fadeIn 0.25s ease;
+  }
+  .overlay.open { display: flex; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  .qr-modal-label { color: white; font-size: 24px; font-weight: 900; text-align: center; }
+  .qr-modal-frame {
+    background: white; border: 6px solid var(--green); border-radius: 28px;
+    padding: 18px; box-shadow: 0 0 60px rgba(6,199,85,0.5);
+  }
+  .qr-modal-frame img { width: 260px; height: 260px; border-radius: 12px; object-fit: contain; display: block; }
+  .qr-modal-sub { color: rgba(255,255,255,0.85); font-size: 16px; text-align: center; line-height: 1.7; }
+  .btn-close {
+    padding: 18px 48px; background: white; color: var(--green-dark);
+    border: none; border-radius: 18px; font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 22px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 0 #CCC;
+  }
+  .btn-close:active { transform: translateY(4px); box-shadow: 0 2px 0 #CCC; }
+
+  /* ===== 説明オーバーレイ ===== */
+  #guideOverlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.92);
+    display: none; flex-direction: column;
+    overflow: hidden;
+  }
+  #guideOverlay.open { display: flex; }
+
+  .guide-header {
+    background: #1A1A2E; padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .guide-header-title { color: white; font-size: 18px; font-weight: 900; }
+  .guide-close {
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15);
+    border: none; color: white; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+  }
+
+  /* ステップインジケーター */
+  .step-indicator {
+    display: flex; justify-content: center; gap: 8px; padding: 12px;
+    background: #1A1A2E; flex-shrink: 0;
+  }
+  .step-dot-ind {
+    width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3);
+    transition: all 0.3s;
+  }
+  .step-dot-ind.active { background: var(--green); width: 28px; border-radius: 5px; }
+
+  /* スライドエリア */
+  .slides-wrapper {
+    flex: 1; overflow: hidden; position: relative;
+  }
+  .slides-track {
+    display: flex; height: 100%;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+  }
+  .slide {
+    min-width: 100%; height: 100%;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px 20px 30px; gap: 16px;
+  }
+
+  /* ステップラベル */
+  .slide-step-label {
+    background: var(--green); color: white;
+    font-size: 16px; font-weight: 900;
+    padding: 6px 20px; border-radius: 20px;
+    flex-shrink: 0;
+  }
+
+  /* 説明テキスト */
+  .slide-title {
+    font-size: 24px; font-weight: 900; color: white;
+    text-align: center; line-height: 1.4; flex-shrink: 0;
+  }
+  .slide-sub {
+    font-size: 16px; color: rgba(255,255,255,0.75);
+    text-align: center; line-height: 1.7; flex-shrink: 0;
+  }
+
+  /* ===== LINEアプリ モック ===== */
+  .phone-mock {
+    width: 260px; flex-shrink: 0;
+    background: white; border-radius: 32px;
+    overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    border: 3px solid #333; position: relative;
+  }
+  .phone-statusbar {
+    background: #F7F7F7; padding: 8px 16px 6px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; font-weight: 700; color: #333;
+    border-bottom: 1px solid #E8E8E8;
+  }
+  .phone-statusbar .time { font-size: 13px; }
+
+  /* LINE ホーム画面 */
+  .line-home-header {
+    background: white; padding: 12px 14px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #EBEBEB;
+  }
+  .line-home-title { font-size: 18px; font-weight: 900; color: #1A1A1A; }
+  .line-home-icons { display: flex; gap: 14px; align-items: center; }
+  .line-icon-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer; position: relative;
+  }
+
+  /* 友達リスト */
+  .line-friend-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid #F0F0F0;
+  }
+  .friend-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .friend-name { font-size: 14px; font-weight: 700; }
+
+  /* LINE タブバー */
+  .line-tabbar {
+    display: flex; background: white; border-top: 1px solid #E0E0E0;
+    padding: 6px 0 10px;
+  }
+  .line-tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 10px; font-weight: 700; color: #999; padding: 4px 0;
+  }
+  .line-tab.active { color: var(--green); }
+  .line-tab-icon { font-size: 22px; }
+
+  /* 友達追加モーダル */
+  .add-friend-modal {
+    background: white; border-radius: 16px 16px 0 0;
+    padding: 0; overflow: hidden;
+  }
+  .add-friend-header {
+    background: var(--green); padding: 14px 16px;
+    color: white; font-size: 17px; font-weight: 900; text-align: center;
+  }
+  .add-friend-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-bottom: 1px solid #F0F0F0;
+    cursor: pointer;
+  }
+  .add-friend-icon-wrap {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+  .add-friend-text strong { display: block; font-size: 15px; font-weight: 900; }
+  .add-friend-text span   { font-size: 12px; color: var(--gray); }
+
+  /* QRスキャナー画面 */
+  .qr-scanner-screen {
+    background: #1A1A1A; min-height: 200px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .scanner-viewfinder {
+    width: 140px; height: 140px;
+    border: 3px solid white; border-radius: 8px;
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .scanner-corner {
+    position: absolute; width: 20px; height: 20px;
+  }
+  .scanner-corner.tl { top: -3px; left: -3px; border-top: 5px solid var(--green); border-left: 5px solid var(--green); }
+  .scanner-corner.tr { top: -3px; right: -3px; border-top: 5px solid var(--green); border-right: 5px solid var(--green); }
+  .scanner-corner.bl { bottom: -3px; left: -3px; border-bottom: 5px solid var(--green); border-left: 5px solid var(--green); }
+  .scanner-corner.br { bottom: -3px; right: -3px; border-bottom: 5px solid var(--green); border-right: 5px solid var(--green); }
+  .scanner-line {
+    position: absolute; width: 100%; height: 2px;
+    background: linear-gradient(to right, transparent, var(--green), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+  }
+  @keyframes scanLine {
+    0%   { top: 10%; }
+    50%  { top: 85%; }
+    100% { top: 10%; }
+  }
+  .scanner-label { color: white; font-size: 13px; font-weight: 700; }
+
+  /* 追加確認画面 */
+  .add-confirm {
+    background: white; padding: 16px;
+  }
+  .add-confirm-profile {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    background: #F8F8F8; border-radius: 12px; padding: 12px;
+  }
+  .add-confirm-avatar {
+    width: 50px; height: 50px; border-radius: 50%;
+    font-size: 28px; display: flex; align-items: center; justify-content: center;
+  }
+  .add-confirm-name { font-size: 17px; font-weight: 900; }
+  .add-confirm-id   { font-size: 12px; color: var(--gray); }
+  .add-btn {
+    width: 100%; padding: 12px; background: var(--green);
+    color: white; border: none; border-radius: 10px;
+    font-size: 17px; font-weight: 900; font-family: 'Zen Maru Gothic', sans-serif;
+  }
+
+  /* ===== 強調表示（赤丸・矢印）===== */
+  .highlight-wrap { position: relative; display: inline-block; }
+  .red-circle {
+    position: absolute; border: 4px solid var(--red); border-radius: 50%;
+    pointer-events: none; animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.5); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+  }
+  .arrow-down {
+    font-size: 36px; color: var(--red);
+    animation: bounce 1s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(6px); }
+  }
+  .tap-label {
+    background: var(--red); color: white;
+    font-size: 14px; font-weight: 900; padding: 4px 14px; border-radius: 20px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ===== ナビボタン ===== */
+  .guide-nav {
+    display: flex; gap: 12px; padding: 14px 20px;
+    background: #1A1A2E; flex-shrink: 0;
+  }
+  .nav-btn {
+    flex: 1; padding: 16px; border: none; border-radius: 16px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 19px; font-weight: 900; cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .nav-prev {
+    background: rgba(255,255,255,0.15); color: white;
+  }
+  .nav-prev:active { transform: translateY(2px); }
+  .nav-next {
+    background: var(--green); color: white; box-shadow: 0 5px 0 var(--green-dark);
+  }
+  .nav-next:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--green-dark); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* 最後のスライド：LINEを開くボタン */
+  .open-line-btn {
+    width: 100%; padding: 20px 16px;
+    background: var(--green); color: white; border: none; border-radius: 18px;
+    font-family: 'Zen Maru Gothic', sans-serif; font-size: 22px; font-weight: 900;
+    cursor: pointer; box-shadow: 0 6px 0 var(--green-dark);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .open-line-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-dark); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>💚 LINEを こうかんしよう</h1>
+    <p>ボタンを おすだけ！</p>
+  </div>
+
+  <div class="content">
+    <!-- ボタン1: QRを見せる -->
+    <button class="btn btn-green" onclick="document.getElementById('qrOverlay').classList.add('open')">
+      <span class="btn-icon">📱</span>
+      自分の QRコードを<br>みせる
+    </button>
+
+    <!-- ボタン2: 説明→スキャナー -->
+    <button class="btn btn-blue" onclick="openGuide()">
+      <span class="btn-icon">📷</span>
+      あいての QRコードを<br>よむ
+    </button>
+  </div>
+</div>
+
+<!-- ===== QR表示オーバーレイ ===== -->
+<div class="overlay" id="qrOverlay">
+  <div class="qr-modal-label">📱 このコードを みせてください</div>
+  <div class="qr-modal-frame">
+    <img src="images/Line.jpg" alt="LINE QRコード">
+  </div>
+  <div class="qr-modal-sub">
+    相手のスマホのカメラで よんでもらいます<br>
+    「カメラでこの画面を 読んでください」と<br>
+    つたえましょう
+  </div>
+  <button class="btn-close" onclick="document.getElementById('qrOverlay').classList.remove('open')">✕ とじる</button>
+</div>
+
+<!-- ===== 説明オーバーレイ ===== -->
+<div id="guideOverlay">
+
+  <div class="guide-header">
+    <div class="guide-header-title">📷 QRコードの よみかた</div>
+    <button class="guide-close" onclick="closeGuide()">✕</button>
+  </div>
+
+  <!-- ステップドット -->
+  <div class="step-indicator" id="stepIndicator"></div>
+
+  <!-- スライド -->
+  <div class="slides-wrapper">
+    <div class="slides-track" id="slidesTrack">
+
+      <!-- SLIDE 1: LINEを開く -->
+      <div class="slide">
+        <div class="slide-step-label">ステップ １ / ４</div>
+        <div class="slide-title">みどりの LINEアプリを<br>おしてひらきます</div>
+        <div class="arrow-down">↓</div>
+        <div style="background:white;border-radius:20px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;align-items:center;width:260px">
+          <div style="font-size:14px;font-weight:700;color:#999;">スマホの ホーム画面</div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.4">
+              <div style="width:52px;height:52px;border-radius:12px;background:#1877F2;display:flex;align-items:center;justify-content:center;font-size:28px;">📘</div>
+              <span style="font-size:10px;font-weight:700">Facebook</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.4">
+              <div style="width:52px;height:52px;border-radius:12px;background:#E1306C;display:flex;align-items:center;justify-content:center;font-size:28px;">📷</div>
+              <span style="font-size:10px;font-weight:700">Instagram</span>
+            </div>
+            <!-- LINE強調 -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;">
+              <div class="highlight-wrap">
+                <div style="width:52px;height:52px;border-radius:12px;background:#06C755;display:flex;align-items:center;justify-content:center;font-size:30px;">💬</div>
+                <div class="red-circle" style="top:-6px;left:-6px;right:-6px;bottom:-6px;"></div>
+              </div>
+              <span style="font-size:10px;font-weight:900;color:var(--red)">LINE</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.4">
+              <div style="width:52px;height:52px;border-radius:12px;background:#FF3B30;display:flex;align-items:center;justify-content:center;font-size:28px;">📞</div>
+              <span style="font-size:10px;font-weight:700">電話</span>
+            </div>
+          </div>
+        </div>
+        <div class="tap-label">👆 ここを おす！</div>
+        <div class="slide-sub">みどりのアイコンが LINEです</div>
+      </div>
+
+      <!-- SLIDE 2: ホーム画面の＋ボタン -->
+      <div class="slide">
+        <div class="slide-step-label">ステップ ２ / ４</div>
+        <div class="slide-title">右上の 人マーク「＋」を<br>おします</div>
+        <div class="arrow-down">↓</div>
+        <div class="phone-mock">
+          <div class="phone-statusbar">
+            <span class="time">9:41</span>
+            <span>📶 🔋</span>
+          </div>
+          <div class="line-home-header">
+            <div class="line-home-title">ホーム</div>
+            <div class="line-home-icons">
+              <div class="line-icon-btn" style="background:#F0F0F0;font-size:16px;">🔍</div>
+              <!-- 強調ボタン -->
+              <div class="highlight-wrap">
+                <div class="line-icon-btn" style="background:#06C755;color:white;font-size:18px;font-weight:900;">＋</div>
+                <div class="red-circle" style="top:-6px;left:-6px;right:-6px;bottom:-6px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="line-friend-item"><div class="friend-avatar">😊</div><div class="friend-name">おかあさん</div></div>
+          <div class="line-friend-item"><div class="friend-avatar">👴</div><div class="friend-name">おとうさん</div></div>
+          <div class="line-friend-item"><div class="friend-avatar">👧</div><div class="friend-name">まごちゃん</div></div>
+          <div class="line-tabbar">
+            <div class="line-tab active"><div class="line-tab-icon">🏠</div>ホーム</div>
+            <div class="line-tab"><div class="line-tab-icon">💬</div>トーク</div>
+            <div class="line-tab"><div class="line-tab-icon">🔔</div>ニュース</div>
+            <div class="line-tab"><div class="line-tab-icon">⋯</div>その他</div>
+          </div>
+        </div>
+        <div class="tap-label">👆 みぎうえの ＋を おす！</div>
+      </div>
+
+      <!-- SLIDE 3: QRコードを選ぶ -->
+      <div class="slide">
+        <div class="slide-step-label">ステップ ３ / ４</div>
+        <div class="slide-title">「QRコード」を<br>おします</div>
+        <div class="arrow-down">↓</div>
+        <div class="phone-mock">
+          <div class="phone-statusbar">
+            <span class="time">9:41</span><span>📶 🔋</span>
+          </div>
+          <div class="add-friend-modal">
+            <div class="add-friend-header">ともだち追加</div>
+            <!-- QRコードを強調 -->
+            <div class="highlight-wrap" style="display:block">
+              <div class="add-friend-item" style="background:#FFF8E1;">
+                <div class="add-friend-icon-wrap" style="background:#FFF3CD;">📷</div>
+                <div class="add-friend-text">
+                  <strong>QRコード</strong>
+                  <span>QRコードでともだち追加</span>
+                </div>
+                <div style="color:var(--red);font-size:20px;font-weight:900;">›</div>
+              </div>
+              <div class="red-circle" style="top:2px;left:2px;right:2px;bottom:2px;border-radius:10px;"></div>
+            </div>
+            <div class="add-friend-item" style="opacity:0.4">
+              <div class="add-friend-icon-wrap" style="background:#E8F5E9;">🔍</div>
+              <div class="add-friend-text"><strong>ID検索</strong><span>LINE IDで検索</span></div>
+            </div>
+            <div class="add-friend-item" style="opacity:0.4">
+              <div class="add-friend-icon-wrap" style="background:#E3F2FD;">📱</div>
+              <div class="add-friend-text"><strong>電話番号</strong><span>電話番号で検索</span></div>
+            </div>
+            <div class="add-friend-item" style="opacity:0.4">
+              <div class="add-friend-icon-wrap" style="background:#FCE4EC;">🤝</div>
+              <div class="add-friend-text"><strong>ふるふる</strong><span>近くの人と追加</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="tap-label">👆 QRコードを おす！</div>
+      </div>
+
+      <!-- SLIDE 4: カメラで読み取り→追加 -->
+      <div class="slide">
+        <div class="slide-step-label">ステップ ４ / ４</div>
+        <div class="slide-title">カメラを 相手のスマホに<br>むけて「追加」をおす</div>
+        <div class="arrow-down">↓</div>
+        <div class="phone-mock">
+          <div class="phone-statusbar">
+            <span class="time">9:41</span><span>📶 🔋</span>
+          </div>
+          <div style="background:#1A1A1A;padding:10px 0 6px;text-align:center;">
+            <span style="color:white;font-size:13px;font-weight:700;">QRコード</span>
+          </div>
+          <div class="qr-scanner-screen">
+            <div class="scanner-viewfinder">
+              <div class="scanner-corner tl"></div>
+              <div class="scanner-corner tr"></div>
+              <div class="scanner-corner bl"></div>
+              <div class="scanner-corner br"></div>
+              <div class="scanner-line"></div>
+            </div>
+            <div class="scanner-label">相手の画面に むけてください</div>
+          </div>
+          <!-- 読み取り後の追加確認 -->
+          <div class="add-confirm">
+            <div class="add-confirm-profile">
+              <div class="add-confirm-avatar">👤</div>
+              <div>
+                <div class="add-confirm-name">あいてのなまえ</div>
+                <div class="add-confirm-id">@line_id</div>
+              </div>
+            </div>
+            <div class="highlight-wrap" style="display:block">
+              <button class="add-btn">追加</button>
+              <div class="red-circle" style="top:-4px;left:-4px;right:-4px;bottom:-4px;border-radius:14px;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tap-label">👆 「追加」を おしたら かんりょう！</div>
+
+        <!-- LINEを開くボタン -->
+        <button class="open-line-btn" onclick="closeGuideAndScan()">
+          <span style="font-size:28px">📷</span>
+          わかった！LINEで よむ
+        </button>
+        <div style="color:rgba(255,255,255,0.6);font-size:14px;text-align:center;">
+          ↑ このボタンでLINEのカメラが ひらきます
+        </div>
+      </div>
+
+    </div><!-- /slides-track -->
+  </div><!-- /slides-wrapper -->
+
+  <!-- ナビゲーション -->
+  <div class="guide-nav">
+    <button class="nav-btn nav-prev" id="prevBtn" onclick="changeSlide(-1)">◀ もどる</button>
+    <button class="nav-btn nav-next" id="nextBtn" onclick="changeSlide(1)">つぎへ ▶</button>
+  </div>
+
+</div><!-- /guideOverlay -->
+
+<script>
+  const TOTAL_SLIDES = 4;
+  let currentSlide = 0;
+
+  function openGuide() {
+    currentSlide = 0;
+    updateSlide();
+    document.getElementById('guideOverlay').classList.add('open');
+  }
+
+  function closeGuide() {
+    document.getElementById('guideOverlay').classList.remove('open');
+  }
+
+  function closeGuideAndScan() {
+    closeGuide();
+    setTimeout(() => openLineScan(), 300);
+  }
+
+  function changeSlide(dir) {
+    const next = currentSlide + dir;
+    if (next < 0 || next >= TOTAL_SLIDES) return;
+    currentSlide = next;
+    updateSlide();
+  }
+
+  function updateSlide() {
+    // トラックを移動
+    document.getElementById('slidesTrack').style.transform = `translateX(-${currentSlide * 100}%)`;
+
+    // ドット更新
+    const indicator = document.getElementById('stepIndicator');
+    indicator.innerHTML = '';
+    for (let i = 0; i < TOTAL_SLIDES; i++) {
+      const d = document.createElement('div');
+      d.className = 'step-dot-ind' + (i === currentSlide ? ' active' : '');
+      indicator.appendChild(d);
+    }
+
+    // ボタン制御
+    document.getElementById('prevBtn').disabled = currentSlide === 0;
+    const nextBtn = document.getElementById('nextBtn');
+    if (currentSlide === TOTAL_SLIDES - 1) {
+      nextBtn.style.display = 'none';
+    } else {
+      nextBtn.style.display = '';
+      nextBtn.disabled = false;
+    }
+  }
+
+  function openLineScan() {
+    const start = Date.now();
+    window.location.href = 'line://nv/qrScanner';
+    setTimeout(() => {
+      if (Date.now() - start < 2500) {
+        if (confirm('LINEアプリが みつかりませんでした。\nダウンロードページを ひらきますか？')) {
+          window.open('https://line.me/ja/download', '_blank');
+        }
+      }
+    }, 1800);
+  }
+
+  // 背景タップで閉じる（QRオーバーレイ）
+  document.getElementById('qrOverlay').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+
+  // 初期化
+  updateSlide();
+</script>
+</body>
+</html>
