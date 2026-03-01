@@ -602,15 +602,8 @@
   }
 
   function openLineScan() {
-    const start = Date.now();
-    window.location.href = 'line://nv/qrScanner';
-    setTimeout(() => {
-      if (Date.now() - start < 2500) {
-        if (confirm('LINEアプリが みつかりませんでした。\nダウンロードページを ひらきますか？')) {
-          window.open('https://line.me/ja/download', '_blank');
-        }
-      }
-    }, 1800);
+    // https://line.me/R/nv/QRCodeReader = 公式の正しいURLスキーム（QRコードリーダーを直接開く）
+    window.location.href = 'https://line.me/R/nv/QRCodeReader';
   }
 
   // 背景タップで閉じる（QRオーバーレイ）
