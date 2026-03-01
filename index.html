@@ -533,10 +533,10 @@
         <!-- LINEを開くボタン -->
         <button class="open-line-btn" onclick="closeGuideAndScan()">
           <span style="font-size:28px">📷</span>
-          わかった！LINEで よむ
+          LINEの ともだち追加を ひらく
         </button>
         <div style="color:rgba(255,255,255,0.6);font-size:14px;text-align:center;">
-          ↑ このボタンでLINEのカメラが ひらきます
+          ↑ LINEの「ともだち追加」画面が ひらきます
         </div>
       </div>
 
@@ -602,8 +602,8 @@
   }
 
   function openLineScan() {
-    // https://line.me/R/nv/QRCodeReader = 公式の正しいURLスキーム（QRコードリーダーを直接開く）
-    window.location.href = 'https://line.me/R/nv/QRCodeReader';
+    // 友達追加画面を開く（スキャナー直接起動は不可のため）
+    window.location.href = 'https://line.me/R/nv/addFriends';
   }
 
   // 背景タップで閉じる（QRオーバーレイ）
